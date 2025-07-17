@@ -1,0 +1,335 @@
+openapi: 3.0.1
+info:
+  title: Vertiq Auth Service API
+  version: 1.0.0
+  description: API documentation for Vertiq authentication microservice (classic login/signup and Google OIDC)
+servers:
+  - url: http://localhost:8080/auth/v1
+    description: Local server
+paths:
+  /signup:
+    post:
+      tags:
+        - Signup
+      summary: Register a new user
+      operationId: userSignup
+      parameters:
+        - $ref: "#/components/parameters/Content-Type"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+      responses:
+        "201":
+          description: Signup successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignupResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      x-api-pattern: ExecuteFunction
+      x-data-sensitivity: Confidential
+      x-type-of-consumer: P
+      x-breadth-of-consumption: ANY
+  /login:
+    post:
+      tags:
+        - Login
+      summary: User login, set refresh token cookie, return access token and user info
+      operationId: userLogin
+      parameters:
+        - $ref: "#/components/parameters/Content-Type"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated successfully
+          headers:
+            Set-Cookie:
+              description: Set refresh token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthWithUserResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /oidc/google:
+    post:
+      tags:
+        - Oidc
+      summary: Google OAuth login/signup
+      operationId: userOidcLogin
+      parameters:
+        - $ref: "#/components/parameters/Content-Type"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcGoogleRequest"
+      responses:
+        "200":
+          description: Authenticated successfully
+          headers:
+            Set-Cookie:
+              description: Set refresh token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthWithUserResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid or expired Google token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /refresh:
+    get:
+      tags:
+        - Refresh
+      summary: Silently refresh access token using HttpOnly cookie
+      operationId: userTokenRefresh
+      parameters:
+        - name: X-Requested-With
+          in: header
+          required: true
+          schema:
+            type: string
+          example: XMLHttpRequest
+      responses:
+        "200":
+          description: Token refreshed successfully
+          headers:
+            Set-Cookie:
+              description: Set refresh token cookie (optional, if rotating)
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthWithUserResponse"
+        "401":
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /logout:
+    get:
+      tags:
+        - Logout
+      summary: Log out user, clear refresh token cookie
+      operationId: userLogout
+      parameters:
+        - name: X-Requested-With
+          in: header
+          required: true
+          schema:
+            type: string
+          example: XMLHttpRequest
+      responses:
+        "200":
+          description: Logout successful
+          headers:
+            Set-Cookie:
+              description: Clear refresh token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResponse"
+        "401":
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  parameters:
+    Content-Type:
+      name: Content-Type
+      in: header
+      description: The MIME type of this content
+      required: false
+      example: text/xml
+      schema:
+        maxLength: 256
+        minLength: 1
+        pattern: ^[ \S]+$
+        type: string
+  schemas:
+    SignupRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: John
+        last_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Doe
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        mobile_number:
+          type: string
+          pattern: '^\\+?[0-9]{10,15}$'
+          example: "+1234567890"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 64
+          example: mySecret123
+        gender:
+          type: string
+          example: male
+        date_of_birth:
+          type: string
+          format: date
+          example: 1990-01-01
+      required:
+        - first_name
+        - last_name
+        - email
+        - mobile_number
+        - password
+        - gender
+        - date_of_birth
+    SignupResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Signup successful
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        phone:
+          type: string
+          example: "+1234567890"
+        password:
+          type: string
+          format: password
+          example: mySecret123
+      required:
+        - password
+    OidcGoogleRequest:
+      type: object
+      properties:
+        idToken:
+          type: string
+          description: Google ID token
+          example: eyJhbGciOiJSUzI1NiIsImtpZCI6...
+      required:
+        - idToken
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Bad Request
+        message:
+          type: string
+          example: Invalid input data
+        status:
+          type: integer
+          example: 400
+    AuthWithUserResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserInfo"
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+    LogoutResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Logged out
