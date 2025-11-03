@@ -42,7 +42,7 @@ public class RefreshController implements RefreshApi {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", newRefreshToken)
                 .httpOnly(true)
                 .secure(true)
-                .sameSite("Strict")
+                .sameSite("None")
                 .path("/")
                 .build();
         return ResponseEntity.ok()
