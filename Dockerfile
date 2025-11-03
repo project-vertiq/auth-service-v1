@@ -1,14 +1,22 @@
-# Use an official OpenJDK 21 image as a base
-FROM openjdk:21-jdk-slim
-
-# Set the working directory in the Docker container
+# Importing JDK and copying required files
+FROM openjdk:21-jdk-slim AS build
 WORKDIR /app
+COPY pom.xml .
+COPY src src
 
-# Copy the built jar file into the Docker container
-COPY ./target/auth-service-v1-0.0.1-SNAPSHOT.jar /app/auth-service-v1.jar
+# Copy Maven wrapper
+COPY mvnw .
+COPY .mvn .mvn
 
-# Expose the port the app runs on
+# Set execution permission for the Maven wrapper
+RUN chmod +x ./mvnw
+RUN ./mvnw clean package -DskipTests
+
+
+FROM openjdk:21-jdk-slim
+VOLUME /tmp
+
+
+COPY --from=build /app/target/*.jar /app/auth-service-v1.jar
+ENTRYPOINT ["java","-jar","auth-service-v1.jar"]
 EXPOSE 8081
-
-# Command to run the application
-CMD ["java", "-jar", "auth-service-v1.jar"]
