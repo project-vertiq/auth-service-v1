@@ -21,7 +21,7 @@ public class JwtUtil {
 
     @Value("${jwt.secret}")
     public void setJwtSecret(String secret) {
-        jwtSecret = secret;
+        jwtSecret = new String(Base64.getDecoder().decode(secret), StandardCharsets.UTF_8);
     }
 
     private static Key getSigningKey() {
